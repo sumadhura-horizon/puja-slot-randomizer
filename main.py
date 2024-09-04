@@ -1,4 +1,3 @@
-import base64
 import pandas as pd
 import streamlit as st
 import time
@@ -6,10 +5,8 @@ from pathlib import Path
 import base64
 import random
 
-# Set the page configuration for a wide layout
 st.set_page_config(layout="wide")
 
-# Custom CSS to center the heading, adjust table width, and center the Ganesha image
 st.markdown(
     """
     <style>
@@ -30,8 +27,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Streamlit UI
-# Add the Ganesha image using Streamlit's image display function
+
 image_path = Path("ganesha.jpg")
 if image_path.exists():
     st.markdown(
@@ -50,9 +46,14 @@ st.markdown(
 @st.cache_data
 def load_data():
     try:
-        return pd.read_excel("names.xlsx")
+        df = pd.read_excel("names.xlsx")
+        df = df[['Name', 'Flat no', 'Slots']]
+        return df
     except FileNotFoundError:
         st.error("Error: The file 'names.xlsx' was not found. Please make sure it's in the same directory as this script.")
+        return None
+    except KeyError as e:
+        st.error(f"Error: Could not find the required column: {e}. Please check the Excel file structure.")
         return None
     except Exception as e:
         st.error(f"An error occurred while reading the file: {str(e)}")
@@ -61,7 +62,6 @@ def load_data():
 df = load_data()
 
 if df is not None:
-    # Center the selection button and selected people list
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if st.button("Randomize Puja Slots"):
@@ -79,8 +79,14 @@ if df is not None:
             df_randomized = df[['Name', 'Flat no']].copy()
             df_randomized['Slots'] = slots
             
-            # Sort the DataFrame based on slot timings
-            df_sorted = df_randomized.sort_values('Slots')
+            # Parse the 'Slots' column to datetime for proper sorting
+            df_randomized['Datetime'] = pd.to_datetime(df_randomized['Slots'], format='%d-%b %I:%M%p', errors='coerce')
+            
+            # Sort the DataFrame based on the parsed datetime
+            df_sorted = df_randomized.sort_values('Datetime')
+            
+            # Remove the 'Datetime' column for display
+            df_sorted = df_sorted.drop('Datetime', axis=1)
             
             st.write("### Randomized and Sorted Puja Slots")
             # Increase the table width and display without indexes
